@@ -1,0 +1,48 @@
+Diagnosis{
+
+  roles Patient, Physician, Radiologist, Pathologist, Board // Patricia, Primo, Radia, Partho, TumorBoard
+  parameters out patientID key, out findings
+
+  private visitLogs, radiologistName, calcificationsReport, radiopID, recommendBiopsy,radiologistNameForBiopsy, biopsyID, biopsyFindings, tissueSample, pathologistFindings,adjudicatedFindings
+
+  // Patient Patricia visits physician Primo for normal checkup.
+  // If Primo is suspicious, he recommends Patricia to visit a Radiologist, otherwise he gives Patricia his findins indicating good health.
+
+  Patient -> Physician : VisitPhysician[out patientID]
+  Physician -> Patient : NormalResult[in patientID, out findings, out visitLogs]
+  Physician -> Patient : RecommendRadiologist[in patientID, out radiologistName, out visitLogs]
+
+  // Patricia visits radiologist Radia for biopsy.
+  // Radia send her findings to Primo, and recommends a biopsy if she has found calcifications.
+  // Primo will either recommend biopsy to Patricia or not, depending on Radia's findings.
+
+  Patient -> Radiologist : VisitRadiologist[in patientID, in radiologistName, out radiopID]
+  Radiologist -> Physician : NoCalicifactions[in patientID, in radiopID, out calcificationsReport]
+  Radiologist -> Physician : CalcificationFound[in patientID, in radiopID, out calcificationsReport, out recommendBiopsy]
+  Physician -> Patient : NormalRadiologistReport[in patientID, in calcificationsReport, out findings]
+  Physician -> Patient : RecommendForBiopsy[in patientID, in calcificationsReport, in recommendBiopsy, out radiologistNameForBiopsy]
+
+  // If biopsy is recommended, Patricia will visit Radia for biopsy.
+  // Radia will perform biopsy and send her findings along with tissue sample to pathologist Partho.
+
+  Patient -> Radiologist : VisitRadiologistForBiopsy[in patientID, in radiologistNameForBiopsy, out biopsyID]
+  Radiologist -> Pathologist : AnalyzeSpecimen[in patientID, in biopsyID, out biopsyFindings, out tissueSample]
+
+  // Partho on receiving tumor sample will perform analysis.
+  // If his findings match with Radia's he will send his report to Primo, otherwise he will send his findings and Radia's findings to Tumor board.
+  // If Primo receives findings from Partho, he will give the findings to Patricia.
+
+  Pathologist -> Physician : AgreeRadiologistFindings[in patientID, in biopsyFindings, in tissueSample, out pathologistFindings]
+  Physician -> Patient : PathologistFindings[in patientID, in pathologistFindings, out findings]
+  Pathologist -> Board : DisagreeRadiologistFindings[in patientID, in biopsyFindings, in tissueSample, out pathologistFindings]
+
+  // When Tumor board receives Partho's findings, they will compare it with Radia's.
+  // They will send the adjudicated finding to Primo to forward it to Patricia.
+  // They will also send the findings to both Radia and Partho.
+
+  Board -> Physician : BoardFindings[in patientID, in biopsyFindings, in pathologistFindings, out adjudicatedFindings]
+  Board -> Radiologist: AdjudicatedFindingsToRadiologist[in patientID, in adjudicatedFindings]
+  Board -> Pathologist: AdjudicatedFindingsToPathologist[in patientID, in adjudicatedFindings]
+  Physician -> Patient: FinalFindings[in patientID, in adjudicatedFindings, out findings]
+
+}
